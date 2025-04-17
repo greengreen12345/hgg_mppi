@@ -103,10 +103,6 @@ class DDPG(Agent):
         _cfg.update(vars(cfg) if cfg is not None else {})
 
         self.args = _cfg
-
-        #print("models 类型：", type(models))
-        print("models：", models)
-
         super().__init__(
             models=models,
             memory=memory,
@@ -227,8 +223,6 @@ class DDPG(Agent):
 
         self.timestep = 0
 
-
-
     def act(self, states: torch.Tensor, timestep: int, timesteps: int) -> torch.Tensor:
         """Process the environment's states to make a decision (actions) using the main policy
 
@@ -313,12 +307,6 @@ class DDPG(Agent):
             print("explore action2")
             return action
 
-        # feed_dict = {
-        #     self.raw_obs_ph: [obs]
-        # }
-        # action, info = self.sess.run([self.pi, self.step_info], feed_dict)
-        # action = action[0]
-
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         processed_states = self._state_preprocessor(states)
@@ -369,11 +357,6 @@ class DDPG(Agent):
         #states = self.preprocess_obs(states)
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        #states = self._state_preprocessor(states).to(device)  # 确保张量在同一设备
-
-        #print(type(states))
-
         processed_states = self._state_preprocessor(states)
 
         if isinstance(processed_states, dict):
@@ -428,7 +411,7 @@ class DDPG(Agent):
 
     def preprocess_obs(self, obs):
         import numpy as np
-        # 把所有 NumPy 数组的值拼接成一个 Tensor
+        
         obs_tensor = torch.tensor(np.concatenate([
             obs['observation'].flatten(),
             obs['achieved_goal'].flatten(),
@@ -653,7 +636,6 @@ class DDPG(Agent):
             obs = batch["obs"]
             obs_next = batch["obs_next"]
 
-            # 如果是 list 就转成 tensor
             if isinstance(obs, list):
                 obs = torch.tensor(obs, dtype=torch.float32)
             if isinstance(obs_next, list):
@@ -694,8 +676,6 @@ class DDPG(Agent):
             states = torch.from_numpy(states).float()
             #actions = torch.from_numpy(actions).float()
             next_states = torch.from_numpy(next_states).float()
-
-        # 放到模型所在的设备上（避免 device mismatch 错误）
 
         states = states.to(device)
         #actions = actions.to(device)
@@ -799,7 +779,6 @@ class DDPG(Agent):
         elif isinstance(obs, np.ndarray):
             obs = torch.from_numpy(obs).float()
 
-            # 获取 policy 的 device
         device = next(self.policy.parameters()).device
         obs = obs.to(device)  # 转到 GPU 或 CPU
 
