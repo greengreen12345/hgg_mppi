@@ -1,24 +1,33 @@
 # Hindsight Goal Generation (HGG)
 
-This is a TensorFlow implementation for our paper [Exploration via Hindsight Goal Generation](http://arxiv.org/abs/1906.04279) accepted by NeurIPS 2019.
 
 
-## Requirements
-1. Python 3.6.9
-2. MuJoCo == 1.50.1.68
-3. TensorFlow >= 1.8.0
-4. BeautifulTable == 0.7.0
-5. gym < 0.22
+
+## Installation
+First, clone the repo in your folder and create the conda environment. 
+````bash
+cd <project_folder>
+git clone https://github.com/tud-amr/m3p2i-aip.git
+
+conda create -n m3p2i-aip python=3.8
+conda activate m3p2i-aip
+````
+
+This project requires the source code of IsaacGym. Check for the [prerequisites and troubleshooting](https://github.com/tud-amr/m3p2i-aip/blob/master/thirdparty/README.md). Download it from https://developer.nvidia.com/isaac-gym, unzip and paste it in the `thirdparty` folder. Move to IsaacGym and install the package.
+````bash
+cd <project_folder>/m3p2i-aip/thirdparty/IsaacGym_Preview_4_Package/isaacgym/python
+pip install -e. 
+````
+
+Then install the current package by:
+````bash
+cd <project_folder>/m3p2i-aip
+pip install -e. 
+````
 
 ## Running Commands
 
-Run the following commands to reproduce our main results shown in section 5.1.
-
 ```bash
-python train.py --tag='HGG_fetch_push' --env=FetchPush-v1
-python train.py --tag='HGG_fetch_pick' --env=FetchPickAndPlace-v1
-python train.py --tag='HGG_hand_block' --env=HandManipulateBlock-v0
-python train.py --tag='HGG_hand_egg' --env=HandManipulateEgg-v0
+python train.py 
 
-python train.py --tag='HGG_fetch_push_with_obstacle' --env=FetchPush-v1 --goal=obstacle
 ```
