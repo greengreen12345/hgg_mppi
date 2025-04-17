@@ -157,7 +157,7 @@ class REACTIVE_TAMP:
         return torch_to_bytes(self.suction_active)
 
     def set_intermediate_goal(self, goal: np.ndarray):
-        # 直接覆盖当前任务规划器的目标
+        
         self.task_planner.curr_goal = goal
         # self.objective.update_objective(self.task_planner.task, goal)
 

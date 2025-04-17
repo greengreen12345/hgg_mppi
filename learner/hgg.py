@@ -45,19 +45,9 @@ class TrajectoryPool:
 class MatchSampler:
 	def __init__(self, args, achieved_trajectory_pool, env):
 		self.args = args
-		print("*************************************************3")
-	# 	self.env = wrapper.IsaacGymWrapper(
-	# 	"panda",
-	# 	"panda_env",
-	# 	num_envs=1,
-	# 	viewer=False,
-	# 	device="cuda:0",
-	# 	cube_on_shelf=False,
-	# )
 		self.env = env
-		print("*************************************************4")
 		self.env_test = self.env
-		print("*************************************************9")
+		
 		# self.env = make_env(args)
 		# self.env_test = make_env(args)
 		self.dim = np.prod(self.env.reset()['achieved_goal'].shape)
@@ -113,25 +103,15 @@ class MatchSampler:
 		candidate_id = []
 
 		agent = self.args.agent
-		# achieved_value = []
-		# for i in range(len(achieved_pool)):
-		# 	obs = [goal_concat(achieved_pool_init_state[i], achieved_pool[i][j]) for j in
-		# 		   range(achieved_pool[i].shape[0])]
-		# 	obs = np.array(obs, dtype=np.float32)
-		# 	# obs = torch.tensor(obs, dtype=torch.float32).T
-		# 	obs = torch.tensor(obs, dtype=torch.float32)
-		# 	value = agent.get_q_value(obs)
-		# 	value = torch.clamp(value, min=-1.0 / (1.0 - self.args.gamma), max=0.0)
-		# 	achieved_value.append(value.cpu().numpy().copy())
-
+		
 		achieved_value = []
 
 		gamma = self.args.gamma
 		q_limit = -1.0 / (1.0 - gamma)
-		device = next(agent.policy.parameters()).device  # 获取当前模型所在设备
+		device = next(agent.policy.parameters()).device  
 
 		for i in range(len(achieved_pool)):
-			# 拼接 achieved_goal + init_state 得到 obs 向量
+			
 			obs = [goal_concat(achieved_pool_init_state[i], achieved_pool[i][j])
 				   for j in range(achieved_pool[i].shape[0])]
 
@@ -163,15 +143,13 @@ class MatchSampler:
 
 		for i in range(len(achieved_pool)):
 			for j in range(len(desired_goals)):
-				# goal_j = desired_goals[j].squeeze()  # 确保 shape 是 (3,)
-				diff = achieved_pool[i].squeeze(1)  - desired_goals[j]  # shape 应该是 (51, 3)
-				distances = np.linalg.norm(diff, axis=1)  # shape: (51,)
+				
+				diff = achieved_pool[i].squeeze(1)  - desired_goals[j]  
+				distances = np.linalg.norm(diff, axis=1)  
 				q_vals = achieved_value[i]  # shape: (51,)
 				scale = self.args.hgg_L / self.max_dis / (1 - self.args.gamma)
-				res = distances - q_vals / scale  # shape: (51,)
-
-				# res = np.sqrt(np.sum(np.square(achieved_pool[i] - desired_goals[j]), axis=1)) - achieved_value[i] / (
-				# 			self.args.hgg_L / self.max_dis / (1 - self.args.gamma))
+				res = distances - q_vals / scale  
+		
 				match_dis = np.min(res) + self.goal_distance(achieved_pool[i][0], initial_goals[j]) * self.args.hgg_c
 				match_idx = np.argmin(res)
 
@@ -180,16 +158,13 @@ class MatchSampler:
 				candidate_edges.append(edge)
 				candidate_id.append(j)
 
-
 		for i in range(len(desired_goals)):
 			self.match_lib.add(graph_id['desired'][i], n, 1, 0)
 
 		match_count = self.match_lib.cost_flow(0, n)
-		print("match_count", match_count)
-		print("self.length", self.length)
+		
 		assert match_count == self.length
-		#print("self.args.hgg_c", self.args.hgg_c)
-		#print(f"[调试] match_count = {match_count}, self.length = {self.length}")
+		
 
 		explore_goals = [0] * self.length
 
@@ -198,122 +173,7 @@ class MatchSampler:
 				explore_goals[candidate_id[i]] = candidate_goals[i].copy()
 		assert len(explore_goals) == self.length
 		self.pool = np.array(explore_goals)
-
-
-
-		# for i in range(len(candidate_goals)):
-		# 	if self.match_lib.check_match(candidate_edges[i]) == 1:
-		# 		explore_goals[candidate_id[i]] = candidate_goals[i].copy()
-		#
-		# for i in range(len(explore_goals)):
-		# 	if type(explore_goals[i]) == int and explore_goals[i] == 0:
-		# 		fallback = desired_goals[np.random.randint(len(desired_goals))]
-		# 		explore_goals[i] = fallback.copy()
-		#
-		# assert len(explore_goals) == self.length
-		# # self.pool = np.array(explore_goals)
-		#
-		# for i in range(len(explore_goals)):
-		# 	g = explore_goals[i]
-		# 	if not isinstance(g, np.ndarray):
-		# 		g = np.array(g, dtype=np.float32)
-		#
-		# 	# 自动 squeeze 多余的维度，例如 (1, 3) → (3,)
-		# 	if g.ndim == 2 and g.shape[0] == 1:
-		# 		g = g.squeeze(0)
-		#
-		# 	# fallback 替换无效目标（全部为 0 或 shape 错）
-		# 	if g.shape != (3,) or np.all(g == 0):
-		# 		#print(f"[修复] explore_goals[{i}] 无效或 shape 不一致，正在替换")
-		# 		fallback = desired_goals[np.random.randint(len(desired_goals))]
-		# 		g = np.array(fallback, dtype=np.float32).squeeze()
-		#
-		# 	explore_goals[i] = g
-		#
-		# # 统一 shape 后安全 stack
-		# self.pool = np.stack(explore_goals)
-
-	def update1(self, initial_goals, desired_goals):
-		if self.achieved_trajectory_pool.counter==0:
-			self.pool = copy.deepcopy(desired_goals)
-			return
-
-		achieved_pool, achieved_pool_init_state = self.achieved_trajectory_pool.pad()
-		candidate_goals = []
-		candidate_edges = []
-		candidate_id = []
-
-		agent = self.args.agent
-		achieved_value = []
-		for i in range(len(achieved_pool)):
-			obs = [ goal_concat(achieved_pool_init_state[i], achieved_pool[i][j]) for  j in range(achieved_pool[i].shape[0])]
-			# feed_dict = {
-			# 	agent.raw_obs_ph: obs
-			# }
-			# value = agent.sess.run(agent.q_pi, feed_dict)[:,0]
-			obs = np.array(obs, dtype=np.float32)  # 先转成 NumPy 数组
-			obs = torch.tensor(obs, dtype=torch.float32)  # 再转成 PyTorch 的 Tensor
-			obs = obs.T
-
-			value = agent.get_q_value(obs)
-			# value = np.clip(value, -1.0/(1.0-self.args.gamma), 0)
-			value = torch.clamp(value, min=-1.0 / (1.0 - self.args.gamma), max=0.0)
-			# achieved_value.append(value.copy())
-			achieved_value.append(value.cpu().numpy().copy())
-
-		n = 0
-		graph_id = {'achieved':[],'desired':[]}
-		for i in range(len(achieved_pool)):
-			n += 1
-			graph_id['achieved'].append(n)
-		for i in range(len(desired_goals)):
-			n += 1
-			graph_id['desired'].append(n)
-		n += 1
-		self.match_lib.clear(n)
-
-		for i in range(len(achieved_pool)):
-			self.match_lib.add(0, graph_id['achieved'][i], 1, 0)
-		for i in range(len(achieved_pool)):
-			for j in range(len(desired_goals)):
-
-				#res = np.sqrt(np.sum(np.square(achieved_pool[i]-desired_goals[j]),axis=1)) - achieved_value[i]/(self.args.hgg_L/self.max_dis/(1-self.args.gamma))
-				res = np.sqrt(np.sum(np.square(achieved_pool[i] - desired_goals[j]), axis=2)) \
-					  - achieved_value[i] / (self.args.hgg_L / self.max_dis / (1 - self.args.gamma))
-				match_dis = np.min(res)+self.goal_distance(achieved_pool[i][0], initial_goals[j])*self.args.hgg_c
-				match_idx = int(np.argmin(res))
-
-				if match_idx >= achieved_pool[i].shape[0]:
-					#print(f"[警告] match_idx={match_idx} 超过 achieved_pool[{i}].shape[0]={achieved_pool[i].shape[0]}")
-					match_idx = achieved_pool[i].shape[0] - 1  # 兜底使用最后一个
-
-				edge = self.match_lib.add(graph_id['achieved'][i], graph_id['desired'][j], 1, c_double(match_dis))
-				#print(f"len(res): {len(res)}, achieved_pool[{i}].shape[0]: {achieved_pool[i].shape[0]}")
-				candidate_goals.append(achieved_pool[i][match_idx])
-
-
-
-
-				candidate_edges.append(edge)
-				candidate_id.append(j)
-				#print("goal_distance:", self.goal_distance(achieved_pool[i][0], initial_goals[j]))
-				#print("np.min(res):", np.min(res))
-		for i in range(len(desired_goals)):
-			self.match_lib.add(graph_id['desired'][i], n, 1, 0)
-
-		match_count = self.match_lib.cost_flow(0,n)
-		#print("self.args.hgg_c", self.args.hgg_c)
-		#print(f"[调试] match_count = {match_count}, self.length = {self.length}")
-
-
-		assert match_count==self.length
-
-		explore_goals = [0]*self.length
-		for i in range(len(candidate_goals)):
-			if self.match_lib.check_match(candidate_edges[i])==1:
-				explore_goals[candidate_id[i]] = candidate_goals[i].copy()
-		assert len(explore_goals)==self.length
-		self.pool = np.array(explore_goals)
+	
 
 class HGGLearner:
 	def __init__(self, args):
@@ -343,16 +203,14 @@ class HGGLearner:
 		self.achieved_trajectories = None
 
 	def learn(self, args, env, env_test, agent, buffer):
-		#print("*************************************************7")
+		
 		self.env = env
 		self.env_test = env_test
 
-		# for i in range(args.episodes):
-		# 	self.env_List.append(env)
-		#print("*************************************************5")
+		
 		if self.sampler is None:
 			self.sampler = MatchSampler(args, self.achieved_trajectory_pool, self.env)
-		#print("*************************************************6")
+		
 		initial_goals = []
 		desired_goals = []
 
@@ -378,11 +236,9 @@ class HGGLearner:
 		for i in range(args.episodes):
 			obs = self.env._get_obs()
 			init_state = obs['observation'].copy()
-			#print("i", i)
+			
 			explore_goal = self.sampler.sample(i)
 			self.explore_goal = explore_goal
-
-			# 将 explore_goal 传入 planner
 			self.reactive_tamp.set_intermediate_goal(explore_goal.copy())
 			self.env.goal = explore_goal.copy()
 
@@ -391,18 +247,13 @@ class HGGLearner:
 			trajectory = [obs['achieved_goal'].copy()]
 
 			for timestep in range(args.timesteps):
-			# for timestep in range(20):
+			
 				action_mppi = bytes_to_torch(self.reactive_tamp.run_tamp(
 					torch_to_bytes(self.env._dof_state), torch_to_bytes(self.env._root_state)))
 
-				# print("goal_a",goal_a)
-				# print("goal_d", goal_d)
-
 				action_hgg = agent.step(obs, explore=True, goal_based=True)
 				action = action_hgg + action_mppi
-				# print("action_hgg", action_hgg)
-				# print("action_mppi", action_mppi)
-				# print("action", action)
+				
 				action = action.repeat(200, 1)
 				obs, reward, done, info = self.env.step(action)
 
@@ -414,7 +265,7 @@ class HGGLearner:
 
 			achieved_trajectories.append(np.array(trajectory))
 			self.achieved_trajectories = achieved_trajectories
-			#print("achieved_trajectories", achieved_trajectories)
+			
 			achieved_init_states.append(init_state)
 			buffer.store_trajectory(current)
 			agent.normalizer_update(buffer.sample_batch())
@@ -427,15 +278,15 @@ class HGGLearner:
 
 		selection_trajectory_idx = {}
 		for i in range(self.args.episodes):
-			print("goal_distance", self.goal_distance(achieved_trajectories[i][0], achieved_trajectories[i][-1]))
+			#print("goal_distance", self.goal_distance(achieved_trajectories[i][0], achieved_trajectories[i][-1]))
 			if self.goal_distance(achieved_trajectories[i][0], achieved_trajectories[i][-1])>0.01:
 
 				selection_trajectory_idx[i] = True
-				print("selection_trajectory_True")
+				#print("selection_trajectory_True")
 		for idx in selection_trajectory_idx.keys():
 			self.achieved_trajectory_pool.insert(achieved_trajectories[idx].copy(), achieved_init_states[idx].copy())
 
 
-		#print("self.achieved_trajectory_pool", self.achieved_trajectory_pool)
+		
 
 
